@@ -37,15 +37,9 @@ class ReplayBuffer(object):
         else:
             self.obs = np.concatenate([self.obs, observations])[-self.max_size:]
             self.acs = np.concatenate([self.acs, actions])[-self.max_size:]
-            self.next_obs = np.concatenate(
-                [self.next_obs, next_observations]
-            )[-self.max_size:]
-            self.terminals = np.concatenate(
-                [self.terminals, terminals]
-            )[-self.max_size:]
-            self.concatenated_rews = np.concatenate(
-                [self.concatenated_rews, concatenated_rews]
-            )[-self.max_size:]
+            self.next_obs = np.concatenate([self.next_obs, next_observations])[-self.max_size:]
+            self.terminals = np.concatenate([self.terminals, terminals])[-self.max_size:]
+            self.concatenated_rews = np.concatenate([self.concatenated_rews, concatenated_rews])[-self.max_size:]
             if isinstance(unconcatenated_rews, list):
                 self.unconcatenated_rews += unconcatenated_rews  # TODO keep only latest max_size around
             else:
@@ -80,8 +74,8 @@ class ReplayBuffer(object):
             index = -1
             while num_datapoints_so_far < batch_size:
                 recent_rollout = self.paths[index]
-                index -=1
-                num_recent_rollouts_to_return +=1
+                index -= 1
+                num_recent_rollouts_to_return += 1
                 num_datapoints_so_far += get_pathlength(recent_rollout)
             rollouts_to_return = self.paths[-num_recent_rollouts_to_return:]
             observations, actions, next_observations, terminals, concatenated_rews, unconcatenated_rews = convert_listofrollouts(rollouts_to_return)

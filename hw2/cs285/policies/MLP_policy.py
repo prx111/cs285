@@ -87,6 +87,13 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
         # TODO: get this from HW1
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+        dist = self.forward(ptu.from_numpy(observation))    # continuous case
+        ac_value = dist.sample()
+        return ptu.to_numpy(ac_value)
 
     # update/train this policy
     def update(self, observations, actions, **kwargs):
@@ -103,7 +110,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
             action_distribution = distributions.Categorical(logits=logits)
             return action_distribution
         else:
-            batch_mean = self.mean_net(observation)
+            batch_mean = self.mean_net(observation)     # 批量多维正态分布(batch, miu, sigma)
             scale_tril = torch.diag(torch.exp(self.logstd))
             batch_dim = batch_mean.shape[0]
             batch_scale_tril = scale_tril.repeat(batch_dim, 1, 1)
@@ -115,6 +122,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
 #####################################################
 #####################################################
+
 
 class MLPPolicyPG(MLPPolicy):
     def __init__(self, ac_dim, ob_dim, n_layers, size, **kwargs):
@@ -134,8 +142,14 @@ class MLPPolicyPG(MLPPolicy):
         # HINT2: you will want to use the `log_prob` method on the distribution returned
             # by the `forward` method
 
-        TODO
-
+        action_distribution = self.forward(observations)
+        log_prob = action_distribution.log_prob(actions)
+        baseline = self.baseline(observations) if self.nn_baseline else 0
+        # baseline = baseline 是否要标准化
+        loss = -(log_prob * (advantages - baseline)).mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
             ## targets. The q_values should first be normalized to have a mean
@@ -144,8 +158,11 @@ class MLPPolicyPG(MLPPolicy):
             ## Note: You will need to convert the targets into a tensor using
                 ## ptu.from_numpy before using it in the loss
 
-            TODO
-
+            value_hat = self.baseline(observations)
+            normalized_q_value = ptu.from_numpy((q_values - np.mean(q_values))/np.std(q_values))
+            loss = self.baseline_loss(value_hat.squeeze(), normalized_q_value)
+            self.baseline_optimizer.zero_grad()
+            self.baseline_optimizer.step()
         train_log = {
             'Training Loss': ptu.to_numpy(loss),
         }

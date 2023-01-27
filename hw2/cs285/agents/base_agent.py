@@ -2,7 +2,7 @@ class BaseAgent(object):
     def __init__(self, **kwargs):
         super(BaseAgent, self).__init__(**kwargs)
 
-    def train(self) -> dict:
+    def train(self, observations, actions, rewards_list, next_observations, terminals) -> dict:
         """Return a dictionary of logging information."""
         raise NotImplementedError
 
